@@ -159,3 +159,7 @@ export function layoutDay(items: Occurrence[]): Placed[] {
 
   return result
 }
+
+// removes one-off tasks of the given days, repeating series stay
+export const withoutDays = (tasks: Task[], dates: string[]) =>
+  tasks.filter((t) => t.repeat || !t.slot || !dates.includes(t.slot.date))

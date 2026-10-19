@@ -3,7 +3,10 @@ import type { Category, PlannerState, Slot, Task, TemplateItem } from './types'
 
 const STORAGE_KEY = 'schedule:v1'
 
-export const PALETTE = ['#7b9cf5', '#4fc1bf', '#79c779', '#e2b55a', '#e58a6b', '#e07fa7', '#a993e8', '#8f99a8']
+export const PALETTE = [
+  '#7b9cf5', '#4fc1bf', '#79c779', '#e2b55a', '#e58a6b', '#e07fa7', '#a993e8', '#8f99a8',
+  '#5aaee0', '#a3c95c', '#efd36b', '#d9925a', '#e87878', '#c58ad8', '#6fb5a0', '#c9b79c',
+]
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: 'study', name: 'Учёба', color: PALETTE[0] },

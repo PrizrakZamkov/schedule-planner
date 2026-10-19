@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyTemplate, autoPlan, copyTask, createTask, findFreeStart, hasConflict, layoutDay, occurrencesOn, overlaps } from './schedule'
+import { applyTemplate, autoPlan, copyTask, withoutDays, createTask, findFreeStart, hasConflict, layoutDay, occurrencesOn, overlaps } from './schedule'
 
 const MON = '2026-10-19'
 const TUE = '2026-10-20'
@@ -96,5 +96,17 @@ describe('copyTask', () => {
   it('keeps the length when copied to the inbox', () => {
     const task = createTask({ title: 'Read', slot: { date: MON, start: h(9), end: h(10.5) } })
     expect(copyTask(task, null).duration).toBe(90)
+  })
+})
+
+describe('withoutDays', () => {
+  it('clears only one-off tasks of the week', () => {
+    const tasks = [
+      createTask({ title: 'mon', slot: { date: MON, start: h(9), end: h(10) } }),
+      createTask({ title: 'next week', slot: { date: '2026-10-26', start: h(9), end: h(10) } }),
+      createTask({ title: 'series', slot: { date: MON, start: h(7), end: h(8) }, repeat: [0] }),
+      createTask({ title: 'inbox' }),
+    ]
+    expect(withoutDays(tasks, [MON, TUE]).map((t) => t.title)).toEqual(['next week', 'series', 'inbox'])
   })
 })

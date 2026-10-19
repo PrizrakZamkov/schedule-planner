@@ -9,8 +9,8 @@ interface Props {
 }
 
 const PLAN_TIP =
-  `Берёт задачи из «Входящих» и ставит их в свободное время этой недели с ${formatTime(PLAN_FROM)} до ${formatTime(PLAN_TO)}. ` +
-  'Сначала задачи с ближайшим дедлайном, потом более важные. Уже стоящие в расписании дела не трогает. Результат можно отменить.'
+  `Берёт задачи из списка Задачи и ставит их в свободное время этой недели с ${formatTime(PLAN_FROM)} до ${formatTime(PLAN_TO)}. ` +
+  'Сначала задачи с ближайшим дедлайном, потом более важные.'
 
 export function Header({ monday, inboxCount, onWeek, onAdd, onPlan }: Props) {
   const label = weekLabel(monday)
@@ -40,7 +40,7 @@ export function Header({ monday, inboxCount, onWeek, onAdd, onPlan }: Props) {
         </button>
         <span className="tip" data-tip={PLAN_TIP}>
           <button className="btn primary" disabled={!inboxCount} onClick={onPlan} aria-describedby="plan-tip">
-            Распланировать входящие
+            Распланировать задачи
             {inboxCount > 0 && <span className="badge">{inboxCount}</span>}
           </button>
           <span id="plan-tip" hidden>

@@ -19,6 +19,7 @@ interface Props {
   onToggle: (occ: Occurrence) => void
   onDelete: (task: Task) => void
   onNudge: (occ: Occurrence, minutes: number, days: number) => void
+  onMenu: (task: Task, x: number, y: number) => void
 }
 
 const HOURS = Array.from({ length: (DAY_END - DAY_START) / 60 }, (_, i) => DAY_START / 60 + i)
@@ -118,12 +119,13 @@ export function WeekGrid({ dates, tasks, categories, drag, onCreate, onOpenNew, 
                 lane={lane}
                 lanes={lanes}
                 color={colorOf(occ.task.categoryId)}
-                lift={drag?.mode === 'move' && !drag.copy && preview && isDragged(occ, date) ? drag : null}
+                lift={drag?.mode === 'move' && !drag.copy && preview && isDragged(occ, date) ? { dx: drag.dx, dy: drag.dy, ...preview } : null}
                 onDragStart={(e, mode) => onDragStart(e, occ.task, mode, date)}
                 onOpen={() => actions.onOpen(occ.task)}
                 onToggle={() => actions.onToggle(occ)}
                 onDelete={() => actions.onDelete(occ.task)}
                 onNudge={(minutes, days) => actions.onNudge(occ, minutes, days)}
+                onMenu={(x, y) => actions.onMenu(occ.task, x, y)}
               />
             ))}
 

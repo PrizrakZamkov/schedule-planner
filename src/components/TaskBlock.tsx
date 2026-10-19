@@ -9,12 +9,13 @@ interface Props {
   lane: number
   lanes: number
   color: string
-  lift: { dx: number; dy: number } | null
+  lift: { dx: number; dy: number; start: number; end: number } | null
   onDragStart: (e: PointerEvent, mode: DragMode) => void
   onToggle: () => void
   onOpen: () => void
   onDelete: () => void
   onNudge: (minutes: number, days: number) => void
+  onMenu: (x: number, y: number) => void
 }
 
 const KEY_MOVES: Record<string, [number, number]> = {
@@ -24,7 +25,7 @@ const KEY_MOVES: Record<string, [number, number]> = {
   ArrowRight: [0, 1],
 }
 
-export function TaskBlock({ occ, lane, lanes, color, lift, onDragStart, onToggle, onOpen, onDelete, onNudge }: Props) {
+export function TaskBlock({ occ, lane, lanes, color, lift, onDragStart, onToggle, onOpen, onDelete, onNudge, onMenu }: Props) {
   const { task, start, end, done } = occ
 
   function handleKey(e: KeyboardEvent) {
@@ -56,6 +57,10 @@ export function TaskBlock({ occ, lane, lanes, color, lift, onDragStart, onToggle
       aria-label={`${task.title}, ${formatTime(start)}–${formatTime(end)}`}
       onPointerDown={(e) => onDragStart(e, 'move')}
       onKeyDown={handleKey}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onMenu(e.clientX, e.clientY)
+      }}
     >
       <button
         className="check"
@@ -70,7 +75,7 @@ export function TaskBlock({ occ, lane, lanes, color, lift, onDragStart, onToggle
       <div className="task-body">
         <span className="task-title">{task.title}</span>
         <span className="task-time">
-          {formatTime(start)}–{formatTime(end)}
+          {formatTime(lift?.start ?? start)}–{formatTime(lift?.end ?? end)}
           {task.repeat && ' ↻'}
         </span>
       </div>

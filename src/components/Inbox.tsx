@@ -9,9 +9,10 @@ interface Props {
   highlight: boolean
   onAdd: () => void
   onDragStart: (e: PointerEvent, task: Task) => void
+  onMenu: (task: Task, x: number, y: number) => void
 }
 
-export function Inbox({ tasks, categories, highlight, onAdd, onDragStart }: Props) {
+export function Inbox({ tasks, categories, highlight, onAdd, onDragStart, onMenu }: Props) {
   const items = tasks.filter((t) => !t.slot)
   const today = toKey(new Date())
   const colorOf = (id: string | null) => categories.find((c) => c.id === id)?.color ?? 'var(--neutral)'
@@ -20,16 +21,14 @@ export function Inbox({ tasks, categories, highlight, onAdd, onDragStart }: Prop
     <section className={cx('panel inbox', highlight && 'drop')} data-inbox>
       <header className="panel-head">
         <h2>
-          Входящие <span className="count">{items.length}</span>
+          Задачи <span className="count">{items.length}</span>
         </h2>
         <button className="icon-btn" aria-label="Новая задача" onClick={onAdd}>
           +
         </button>
       </header>
 
-      {items.length === 0 ? (
-        <p className="empty">Пусто. Сюда попадают задачи без времени</p>
-      ) : (
+      {items.length > 0 && (
         <ul className="inbox-list">
           {items.map((task, i) => (
             <li
@@ -38,6 +37,10 @@ export function Inbox({ tasks, categories, highlight, onAdd, onDragStart }: Prop
               className="inbox-item"
               style={{ '--c': colorOf(task.categoryId), '--i': i } as CSSProperties}
               onPointerDown={(e) => onDragStart(e, task)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                onMenu(task, e.clientX, e.clientY)
+              }}
             >
               <span className="inbox-title">{task.title}</span>
               <span className="meta">
@@ -53,7 +56,7 @@ export function Inbox({ tasks, categories, highlight, onAdd, onDragStart }: Prop
           ))}
         </ul>
       )}
-      <p className="hint">Перетащите задачу в календарь или поставьте всё сразу кнопкой «Распланировать входящие». С зажатым Alt перетаскивается копия</p>
+      <p className="hint">Задачу можно перетащить в расписание</p>
     </section>
   )
 }

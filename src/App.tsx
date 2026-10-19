@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
 import type { Occurrence, PlannerState, Slot, Task } from './types'
-import { emptyState, isPlannerState, usePlanner } from './store'
+import { isPlannerState, usePlanner } from './store'
 import { slotAtPoint, useTaskDrag } from './hooks/useTaskDrag'
-import { applyTemplate, autoPlan, copyTask, createTask, weekToTemplate } from './lib/schedule'
+import { applyTemplate, autoPlan, copyTask, createTask, weekToTemplate, withoutDays } from './lib/schedule'
 import { addDays, ceilStep, clamp, DAY_END, DAY_START, fromKey, nowMinutes, PLAN_FROM, PLAN_TO, startOfWeek, toKey, weekKeys } from './lib/time'
 import { Header } from './components/Header'
 import { WeekGrid } from './components/WeekGrid'
@@ -10,6 +10,7 @@ import { Inbox } from './components/Inbox'
 import { Categories } from './components/Categories'
 import { TaskModal } from './components/TaskModal'
 import { Toast, type ToastData } from './components/Toast'
+import { ContextMenu } from './components/ContextMenu'
 
 export default function App() {
   const [state, dispatch] = usePlanner()
@@ -17,24 +18,27 @@ export default function App() {
   const [editing, setEditing] = useState<{ task: Task; isNew: boolean } | null>(null)
   const [toast, setToast] = useState<ToastData | null>(null)
   const [clipboard, setClipboard] = useState<Task | null>(null)
+  const [menu, setMenu] = useState<{ task: Task; x: number; y: number } | null>(null)
+  const closeMenu = useCallback(() => setMenu(null), [])
+  const openMenu = (task: Task, x: number, y: number) => setMenu({ task, x, y })
   const pointer = useRef({ x: 0, y: 0 })
   const dates = useMemo(() => weekKeys(monday), [monday])
 
   const closeToast = useCallback(() => setToast(null), [])
-  const notify = (text: string, undo?: () => void) => setToast({ id: Date.now(), text, undo })
+  const notify = (text: string, undo?: () => void, duration?: number) => setToast({ id: Date.now(), text, undo, duration })
 
   // apply a change and offer to roll it back
-  function withUndo(text: string, change: () => void) {
+  function withUndo(text: string, change: () => void, duration?: number) {
     const previous: PlannerState = state
     change()
-    notify(text, () => dispatch({ type: 'replace', state: previous }))
+    notify(text, () => dispatch({ type: 'replace', state: previous }), duration)
   }
 
   const move = (task: Task, slot: Slot | null) => dispatch({ type: 'moveTask', id: task.id, slot })
   const inboxCount = state.tasks.filter((t) => !t.slot && !t.done).length
 
   function copyTo(task: Task, slot: Slot | null) {
-    withUndo(slot ? 'Копия добавлена' : 'Копия добавлена во «Входящие»', () =>
+    withUndo(slot ? 'Копия добавлена' : 'Копия добавлена в задачи', () =>
       dispatch({ type: 'saveTask', task: copyTask(task, slot) }),
     )
   }
@@ -114,13 +118,13 @@ export default function App() {
     const template = weekToTemplate(state.tasks, dates)
     if (!template.length) return notify('На этой неделе пока нет дел')
     dispatch({ type: 'setTemplate', template })
-    notify(`Неделя запомнена, дел: ${template.length}`)
+    notify(`Шаблон создан, дел: ${template.length}`)
   }
 
   function applyWeekTemplate() {
     const { tasks, skipped } = applyTemplate(state.tasks, state.template, dates)
     const note = skipped ? `, пропущено из-за пересечений: ${skipped}` : ''
-    withUndo(`Распорядок вставлен${note}`, () => dispatch({ type: 'setTasks', tasks }))
+    withUndo(`Шаблон применён${note}`, () => dispatch({ type: 'setTasks', tasks }))
   }
 
   function exportData() {
@@ -164,6 +168,7 @@ export default function App() {
           onToggle={(occ) => dispatch({ type: 'toggleDone', id: occ.task.id, date: occ.date })}
           onDelete={deleteTask}
           onNudge={nudge}
+          onMenu={openMenu}
         />
 
         <aside className="sidebar">
@@ -173,23 +178,23 @@ export default function App() {
             highlight={drag?.target === 'inbox'}
             onAdd={() => setEditing({ task: createTask({ title: '' }), isNew: true })}
             onDragStart={(e, task) => startDrag(e, task, 'move')}
+            onMenu={openMenu}
           />
 
           <Categories categories={state.categories} dispatch={dispatch} />
 
           <section className="panel">
-            <h2>Типовая неделя</h2>
+            <h2>Шаблон недели</h2>
             <p className="hint">
-              {state.template.length
-                ? `Сохранено дел: ${state.template.length}. Можно вставить в любую неделю`
-                : 'Запомните удачную неделю и вставляйте её распорядок в другие'}
+              Создание шаблона недели на основе текущей
+              {state.template.length > 0 && <span className="hint-line">В шаблоне дел: {state.template.length}</span>}
             </p>
-            <div className="btn-row">
+            <div className="btn-col">
               <button className="btn" onClick={saveTemplate}>
-                Запомнить эту
+                Создать шаблон
               </button>
               <button className="btn" disabled={!state.template.length} onClick={applyWeekTemplate}>
-                Вставить сюда
+                Использовать шаблон
               </button>
             </div>
 
@@ -206,10 +211,10 @@ export default function App() {
             </div>
             <button
               className="btn ghost danger clear-btn"
-              disabled={!state.tasks.length}
-              onClick={() => withUndo('Все задачи удалены', () => dispatch({ type: 'replace', state: { ...emptyState(), categories: state.categories } }))}
+              disabled={withoutDays(state.tasks, dates).length === state.tasks.length}
+              onClick={() => withUndo('Неделя очищена', () => dispatch({ type: 'setTasks', tasks: withoutDays(state.tasks, dates) }), 10_000)}
             >
-              Очистить всё
+              Очистить неделю
             </button>
           </section>
         </aside>
@@ -239,6 +244,19 @@ export default function App() {
         >
           {drag.task.title}
         </div>
+      )}
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={closeMenu}
+          items={[
+            { label: 'Копировать', onClick: () => copyToClipboard(menu.task) },
+            { label: 'Дублировать', onClick: () => duplicate(menu.task) },
+            { label: menu.task.repeat ? 'Удалить серию' : 'Удалить', danger: true, onClick: () => deleteTask(menu.task) },
+          ]}
+        />
       )}
 
       <Toast toast={toast} onClose={closeToast} />

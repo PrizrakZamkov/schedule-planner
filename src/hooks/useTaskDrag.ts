@@ -54,6 +54,7 @@ export function useTaskDrag({ onDrop, onTap }: Options) {
     const origin = { x: e.clientX, y: e.clientY }
     const scroller = document.querySelector<HTMLElement>('[data-scroll]')
     const startScroll = scroller?.scrollTop ?? 0
+    const originColumn = (e.currentTarget as HTMLElement).closest<HTMLElement>('[data-date]')
     const pointer = { x: e.clientX, y: e.clientY, alt: false }
     let dirty = false
     let frame = 0
@@ -98,6 +99,13 @@ export function useTaskDrag({ onDrop, onTap }: Options) {
       if (!dirty && !scrolled) return
       dirty = false
       const copy = mode === 'move' && pointer.alt
+      const target = findTarget(pointer.x, pointer.y, copy)
+
+      // the card jumps between day columns and slides smoothly in time
+      let dx = pointer.x - origin.x
+      const targetColumn = target && target !== 'inbox' && document.querySelector<HTMLElement>(`[data-date="${target.date}"]`)
+      if (targetColumn && originColumn) dx = targetColumn.getBoundingClientRect().left - originColumn.getBoundingClientRect().left
+
       current = {
         task,
         mode,
@@ -105,9 +113,9 @@ export function useTaskDrag({ onDrop, onTap }: Options) {
         date,
         x: pointer.x,
         y: pointer.y,
-        dx: pointer.x - origin.x,
+        dx,
         dy: pointer.y - origin.y + (scroller?.scrollTop ?? 0) - startScroll,
-        target: findTarget(pointer.x, pointer.y, copy),
+        target,
       }
       setDrag(current)
     }

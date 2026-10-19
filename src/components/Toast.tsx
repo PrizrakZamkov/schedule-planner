@@ -4,12 +4,13 @@ export interface ToastData {
   id: number
   text: string
   undo?: () => void
+  duration?: number
 }
 
 export function Toast({ toast, onClose }: { toast: ToastData | null; onClose: () => void }) {
   useEffect(() => {
     if (!toast) return
-    const timer = setTimeout(onClose, 4000)
+    const timer = setTimeout(onClose, toast.duration ?? 4000)
     return () => clearTimeout(timer)
   }, [toast, onClose])
 
