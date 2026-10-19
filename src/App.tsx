@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
 import type { Occurrence, PlannerState, Slot, Task } from './types'
-import { isPlannerState, usePlanner } from './store'
+import { emptyState, isPlannerState, usePlanner } from './store'
 import { slotAtPoint, useTaskDrag } from './hooks/useTaskDrag'
 import { applyTemplate, autoPlan, copyTask, createTask, weekToTemplate } from './lib/schedule'
 import { addDays, ceilStep, clamp, DAY_END, DAY_START, fromKey, nowMinutes, PLAN_FROM, PLAN_TO, startOfWeek, toKey, weekKeys } from './lib/time'
@@ -204,6 +204,13 @@ export default function App() {
                 <input type="file" accept="application/json" hidden onChange={importData} />
               </label>
             </div>
+            <button
+              className="btn ghost danger clear-btn"
+              disabled={!state.tasks.length}
+              onClick={() => withUndo('Все задачи удалены', () => dispatch({ type: 'replace', state: { ...emptyState(), categories: state.categories } }))}
+            >
+              Очистить всё
+            </button>
           </section>
         </aside>
       </main>

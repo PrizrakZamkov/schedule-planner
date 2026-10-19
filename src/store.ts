@@ -1,7 +1,5 @@
 import { useEffect, useReducer, type Dispatch } from 'react'
 import type { Category, PlannerState, Slot, Task, TemplateItem } from './types'
-import { createTask } from './lib/schedule'
-import { startOfWeek, weekKeys } from './lib/time'
 
 const STORAGE_KEY = 'schedule:v1'
 
@@ -74,28 +72,7 @@ function reducer(state: PlannerState, action: Action): PlannerState {
   }
 }
 
-function sampleState(): PlannerState {
-  const week = weekKeys(startOfWeek(new Date()))
-  const at = (day: number, hour: number, minutes: number) => ({
-    date: week[day],
-    start: hour * 60,
-    end: hour * 60 + minutes,
-  })
-
-  return {
-    categories: DEFAULT_CATEGORIES,
-    template: [],
-    tasks: [
-      createTask({ title: 'Зарядка', categoryId: 'health', slot: at(0, 7, 30), repeat: [0, 2, 4] }),
-      createTask({ title: 'Лекция по алгоритмам', categoryId: 'study', slot: at(1, 10, 90) }),
-      createTask({ title: 'Созвон с командой', categoryId: 'work', slot: at(2, 15, 45) }),
-      createTask({ title: 'Кино с друзьями', categoryId: 'rest', slot: at(5, 19, 120) }),
-      createTask({ title: 'Дочитать главу по React', categoryId: 'study', duration: 60, priority: 3, deadline: week[4] }),
-      createTask({ title: 'Обновить резюме', categoryId: 'work', duration: 90, deadline: week[6] }),
-      createTask({ title: 'Купить продукты', categoryId: 'personal', duration: 45, priority: 1 }),
-    ],
-  }
-}
+export const emptyState = (): PlannerState => ({ tasks: [], categories: DEFAULT_CATEGORIES, template: [] })
 
 export function isPlannerState(value: unknown): value is PlannerState {
   const v = value as PlannerState
@@ -105,9 +82,9 @@ export function isPlannerState(value: unknown): value is PlannerState {
 function load(): PlannerState {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
-    return isPlannerState(saved) ? saved : sampleState()
+    return isPlannerState(saved) ? saved : emptyState()
   } catch {
-    return sampleState()
+    return emptyState()
   }
 }
 
