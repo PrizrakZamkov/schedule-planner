@@ -41,6 +41,11 @@ export function WeekGrid({ dates, tasks, categories, drag, onCreate, onOpenNew, 
 
   const colorOf = (id: string | null) => categories.find((c) => c.id === id)?.color ?? 'var(--neutral)'
   const preview = drag && drag.target && drag.target !== 'inbox' ? (drag.target as Slot) : null
+  const isDragged = (occ: Occurrence, date: string) => drag?.task.id === occ.task.id && drag.date === date
+
+  // the card being resized shows its new end right away
+  const shown = (occ: Occurrence, date: string) =>
+    preview && drag?.mode === 'resize' && isDragged(occ, date) ? { ...occ, end: preview.end } : occ
 
   // drag over an empty part of a day to select a time range, a plain click gives one hour
   function startSelection(e: PointerEvent<HTMLDivElement>, date: string) {
@@ -81,7 +86,7 @@ export function WeekGrid({ dates, tasks, categories, drag, onCreate, onOpenNew, 
   }
 
   return (
-    <section className="grid" ref={scrollRef} style={{ '--hour': `${HOUR_PX}px` } as CSSProperties}>
+    <section className="grid" data-scroll ref={scrollRef} style={{ '--hour': `${HOUR_PX}px` } as CSSProperties}>
       <div className="grid-head">
         <span />
         {dates.map((date, i) => (
@@ -109,11 +114,11 @@ export function WeekGrid({ dates, tasks, categories, drag, onCreate, onOpenNew, 
             {layoutDay(occurrencesOn(tasks, date)).map(({ occ, lane, lanes }) => (
               <TaskBlock
                 key={occ.task.id}
-                occ={occ}
+                occ={shown(occ, date)}
                 lane={lane}
                 lanes={lanes}
                 color={colorOf(occ.task.categoryId)}
-                dimmed={drag?.task.id === occ.task.id && !drag.copy}
+                lift={drag?.mode === 'move' && !drag.copy && preview && isDragged(occ, date) ? drag : null}
                 onDragStart={(e, mode) => onDragStart(e, occ.task, mode, date)}
                 onOpen={() => actions.onOpen(occ.task)}
                 onToggle={() => actions.onToggle(occ)}
@@ -146,7 +151,7 @@ export function WeekGrid({ dates, tasks, categories, drag, onCreate, onOpenNew, 
               />
             )}
 
-            {preview?.date === date && (
+            {preview?.date === date && drag?.mode === 'move' && (
               <div className="preview" style={blockPosition(preview.start, preview.end)}>
                 {formatTime(preview.start)}–{formatTime(preview.end)}
               </div>

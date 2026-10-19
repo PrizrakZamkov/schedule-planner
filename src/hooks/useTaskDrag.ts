@@ -12,16 +12,32 @@ export interface DragState {
   y: number
   target: DropTarget
   copy: boolean
+  date?: string
+  dx: number // how far the card moved from where it was grabbed
+  dy: number
 }
+
+const EDGE = 56
+const MAX_SPEED = 18
 
 interface Options {
   onDrop: (task: Task, slot: Slot | null, copy: boolean) => void
   onTap: (task: Task) => void
 }
 
+function columnAtX(x: number): HTMLElement | null {
+  const columns = Array.from(document.querySelectorAll<HTMLElement>('[data-date]'))
+  return columns.find((c) => {
+    const r = c.getBoundingClientRect()
+    return x >= r.left && x < r.right
+  }) ?? null
+}
+
 // the time slot under a screen point, `grab` is how many minutes below the task top it was grabbed
 export function slotAtPoint(x: number, y: number, length: number, grab = 0, column?: HTMLElement | null): Slot | null {
-  const col = column ?? document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-date]')
+  const el = document.elementFromPoint(x, y)
+  // over the day headers or the grid edge the column is picked by x, the time is clamped
+  const col = column ?? el?.closest<HTMLElement>('[data-date]') ?? (el?.closest('[data-scroll]') ? columnAtX(x) : null)
   if (!col) return null
   const minutes = DAY_START + (y - col.getBoundingClientRect().top) / PX_PER_MIN
   const start = clamp(snap(minutes - grab), DAY_START, DAY_END - length)
@@ -36,6 +52,11 @@ export function useTaskDrag({ onDrop, onTap }: Options) {
     if (e.button !== 0) return
 
     const origin = { x: e.clientX, y: e.clientY }
+    const scroller = document.querySelector<HTMLElement>('[data-scroll]')
+    const startScroll = scroller?.scrollTop ?? 0
+    const pointer = { x: e.clientX, y: e.clientY, alt: false }
+    let dirty = false
+    let frame = 0
     const length = task.slot ? task.slot.end - task.slot.start : task.duration
     const grab = task.slot ? (e.clientY - e.currentTarget.getBoundingClientRect().top) / PX_PER_MIN : 0
     let current: DragState | null = null
@@ -56,15 +77,51 @@ export function useTaskDrag({ onDrop, onTap }: Options) {
       return slotAtPoint(x, y, length, grab, task.repeat && !copy ? sameDay : undefined)
     }
 
-    function onMove(ev: PointerEvent) {
-      if (!current && Math.hypot(ev.clientX - origin.x, ev.clientY - origin.y) < 5) return
-      document.body.classList.add('dragging')
-      const copy = mode === 'move' && ev.altKey
-      current = { task, mode, copy, x: ev.clientX, y: ev.clientY, target: findTarget(ev.clientX, ev.clientY, copy) }
+    // scroll the grid when the cursor is near its top or bottom edge, faster closer to the edge
+    function autoScroll(): boolean {
+      if (!scroller) return false
+      const r = scroller.getBoundingClientRect()
+      if (pointer.x < r.left || pointer.x > r.right) return false
+      const top = r.top + EDGE + 40
+      const bottom = r.bottom - EDGE
+      const depth = pointer.y < top ? pointer.y - top : pointer.y > bottom ? pointer.y - bottom : 0
+      if (!depth) return false
+      const before = scroller.scrollTop
+      scroller.scrollTop += clamp(depth / 3, -MAX_SPEED, MAX_SPEED)
+      return scroller.scrollTop !== before
+    }
+
+    // one update per screen frame, however often the mouse fires
+    function tick() {
+      frame = requestAnimationFrame(tick)
+      const scrolled = autoScroll()
+      if (!dirty && !scrolled) return
+      dirty = false
+      const copy = mode === 'move' && pointer.alt
+      current = {
+        task,
+        mode,
+        copy,
+        date,
+        x: pointer.x,
+        y: pointer.y,
+        dx: pointer.x - origin.x,
+        dy: pointer.y - origin.y + (scroller?.scrollTop ?? 0) - startScroll,
+        target: findTarget(pointer.x, pointer.y, copy),
+      }
       setDrag(current)
     }
 
+    function onMove(ev: PointerEvent) {
+      Object.assign(pointer, { x: ev.clientX, y: ev.clientY, alt: ev.altKey })
+      dirty = true
+      if (frame || Math.hypot(ev.clientX - origin.x, ev.clientY - origin.y) < 5) return
+      document.body.classList.add('dragging')
+      tick()
+    }
+
     function finish(ev: PointerEvent) {
+      cancelAnimationFrame(frame)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', finish)
       window.removeEventListener('pointercancel', finish)

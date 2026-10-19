@@ -9,7 +9,7 @@ interface Props {
   lane: number
   lanes: number
   color: string
-  dimmed: boolean
+  lift: { dx: number; dy: number } | null
   onDragStart: (e: PointerEvent, mode: DragMode) => void
   onToggle: () => void
   onOpen: () => void
@@ -24,7 +24,7 @@ const KEY_MOVES: Record<string, [number, number]> = {
   ArrowRight: [0, 1],
 }
 
-export function TaskBlock({ occ, lane, lanes, color, dimmed, onDragStart, onToggle, onOpen, onDelete, onNudge }: Props) {
+export function TaskBlock({ occ, lane, lanes, color, lift, onDragStart, onToggle, onOpen, onDelete, onNudge }: Props) {
   const { task, start, end, done } = occ
 
   function handleKey(e: KeyboardEvent) {
@@ -42,12 +42,13 @@ export function TaskBlock({ occ, lane, lanes, color, dimmed, onDragStart, onTogg
     ...blockPosition(start, end),
     left: `calc(${lane} * (100% - 6px) / ${lanes} + 3px)`,
     width: `calc((100% - 6px) / ${lanes} - 2px)`,
+    transform: lift ? `translate(${lift.dx}px, ${lift.dy}px)` : undefined,
     '--c': color,
   } as CSSProperties
 
   return (
     <div
-      className={cx('task', done && 'done', dimmed && 'dimmed', lanes > 1 && 'narrow', end - start <= 30 && 'short')}
+      className={cx('task', done && 'done', lift && 'lifted', lanes > 1 && 'narrow', end - start <= 30 && 'short')}
       style={style}
       data-task-id={task.id}
       tabIndex={0}
