@@ -40,7 +40,9 @@ export function TaskBlock({ occ, lane, lanes, color, lift, onDragStart, onToggle
   }
 
   const style = {
-    ...blockPosition(start, end),
+    // 1px gap on each side so back-to-back tasks do not merge
+    top: blockPosition(start, end).top + 1,
+    height: blockPosition(start, end).height - 2,
     left: `calc(${lane} * (100% - 6px) / ${lanes} + 3px)`,
     width: `calc((100% - 6px) / ${lanes} - 2px)`,
     transform: lift ? `translate(${lift.dx}px, ${lift.dy}px)` : undefined,
