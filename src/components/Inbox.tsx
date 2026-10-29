@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function Inbox({ tasks, categories, highlight, onAdd, onDragStart, onMenu }: Props) {
-  const items = tasks.filter((t) => !t.slot)
+  const items = tasks.filter((t) => !t.slot && !t.span)
   const today = toKey(new Date())
   const colorOf = (id: string | null) => categories.find((c) => c.id === id)?.color ?? 'var(--neutral)'
 

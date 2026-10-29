@@ -3,10 +3,9 @@ import type { Category, PlannerState, Slot, Task, TemplateItem } from './types'
 
 const STORAGE_KEY = 'schedule:v1'
 
-export const PALETTE = [
-  '#7b9cf5', '#4fc1bf', '#79c779', '#e2b55a', '#e58a6b', '#e07fa7', '#a993e8', '#8f99a8',
-  '#5aaee0', '#a3c95c', '#efd36b', '#d9925a', '#e87878', '#c58ad8', '#6fb5a0', '#c9b79c',
-]
+import { normalizeState, PALETTE } from './lib/migrate'
+
+export { PALETTE }
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: 'study', name: 'Учёба', color: PALETTE[0] },
@@ -77,15 +76,11 @@ function reducer(state: PlannerState, action: Action): PlannerState {
 
 export const emptyState = (): PlannerState => ({ tasks: [], categories: DEFAULT_CATEGORIES, template: [] })
 
-export function isPlannerState(value: unknown): value is PlannerState {
-  const v = value as PlannerState
-  return !!v && Array.isArray(v.tasks) && Array.isArray(v.categories) && Array.isArray(v.template)
-}
-
 function load(): PlannerState {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
-    return isPlannerState(saved) ? saved : emptyState()
+    const saved = normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null'))
+    if (!saved) return emptyState()
+    return saved.categories.length ? saved : { ...saved, categories: DEFAULT_CATEGORIES }
   } catch {
     return emptyState()
   }

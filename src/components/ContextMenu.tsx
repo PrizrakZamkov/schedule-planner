@@ -4,6 +4,9 @@ import { cx } from '../lib/cx'
 export interface MenuItem {
   label: string
   danger?: boolean
+  disabled?: boolean
+  note?: string
+  divider?: boolean
   onClick: () => void
 }
 
@@ -46,13 +49,15 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
         <button
           key={item.label}
           role="menuitem"
-          className={cx('menu-item', item.danger && 'danger')}
+          disabled={item.disabled}
+          className={cx('menu-item', item.danger && 'danger', item.divider && 'divider')}
           onClick={() => {
             onClose()
             item.onClick()
           }}
         >
           {item.label}
+          {item.note && <small>{item.note}</small>}
         </button>
       ))}
     </div>

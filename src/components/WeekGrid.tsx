@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
-import type { Category, Occurrence, Slot, Task } from '../types'
+import type { Category, Occurrence, Slot, Task, Span } from '../types'
 import type { DragMode, DragState } from '../hooks/useTaskDrag'
 import { TaskBlock } from './TaskBlock'
 import { DraftBlock } from './DraftBlock'
+import { SpanStrip } from './SpanStrip'
 import { cx } from '../lib/cx'
 import { layoutDay, occurrencesOn } from '../lib/schedule'
 import { blockPosition, ceilStep, clamp, DAY_END, DAY_START, formatTime, fromKey, HOUR_PX, nowMinutes, PX_PER_MIN, STEP, toKey, WEEKDAYS } from '../lib/time'
@@ -20,11 +21,14 @@ interface Props {
   onDelete: (task: Task) => void
   onNudge: (occ: Occurrence, minutes: number, days: number) => void
   onMenu: (task: Task, x: number, y: number) => void
+  onSpanCreate: (span: Span, title: string) => void
+  onSpanChange: (task: Task, span: Span) => void
+  onSpanToggle: (task: Task) => void
 }
 
 const HOURS = Array.from({ length: (DAY_END - DAY_START) / 60 }, (_, i) => DAY_START / 60 + i)
 
-export function WeekGrid({ dates, tasks, categories, drag, onCreate, onOpenNew, onDragStart, ...actions }: Props) {
+export function WeekGrid({ dates, tasks, categories, drag, onCreate, onOpenNew, onDragStart, onSpanCreate, onSpanChange, onSpanToggle, ...actions }: Props) {
   const today = toKey(new Date())
   const [now, setNow] = useState(nowMinutes)
   const [selection, setSelection] = useState<Slot | null>(null)
@@ -96,6 +100,16 @@ export function WeekGrid({ dates, tasks, categories, drag, onCreate, onOpenNew, 
             <b>{fromKey(date).getDate()}</b>
           </div>
         ))}
+        <SpanStrip
+          dates={dates}
+          tasks={tasks}
+          categories={categories}
+          onCreate={onSpanCreate}
+          onChange={onSpanChange}
+          onOpen={actions.onOpen}
+          onToggle={onSpanToggle}
+          onMenu={actions.onMenu}
+        />
       </div>
 
       <div className="grid-body" key={dates[0]} style={{ height: (DAY_END - DAY_START) * PX_PER_MIN }}>

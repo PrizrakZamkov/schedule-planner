@@ -6,6 +6,11 @@ export interface Slot {
   end: number
 }
 
+export interface Span {
+  from: string // yyyy-mm-dd, both days included
+  to: string
+}
+
 export interface Task {
   id: string
   title: string
@@ -17,6 +22,7 @@ export interface Task {
   repeat: number[] | null // weekdays 0 = Mon, slot.date is the first day
   done: boolean
   doneDates: string[]
+  span?: Span | null // multi-day task, shown in the all-day strip
 }
 
 export interface Category {

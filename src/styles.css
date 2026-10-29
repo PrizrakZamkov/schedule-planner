@@ -342,7 +342,7 @@ body.dragging * {
   position: absolute;
   z-index: 2;
   display: flex;
-  padding: 6px 26px 6px 8px;
+  padding: 6px 8px;
   overflow: hidden;
   border-radius: 8px;
   background: color-mix(in srgb, var(--c) 26%, var(--surface));
@@ -378,6 +378,10 @@ body.dragging * {
   padding: 5px 21px 5px 6px;
 }
 
+.task.narrow .task-title::before {
+  display: none;
+}
+
 .task.narrow .check {
   right: 3px;
   width: 15px;
@@ -405,10 +409,15 @@ body.dragging * {
 .task-title {
   font-weight: 600;
   line-height: 1.25;
-  overflow-wrap: break-word;
-  hyphens: auto;
   text-decoration: line-through 1.5px transparent;
   transition: text-decoration-color 0.3s, color 0.3s;
+}
+
+.task-title::before {
+  content: '';
+  float: right;
+  width: 14px;
+  height: 14px;
 }
 
 .task-time {
@@ -524,6 +533,159 @@ body.dragging * {
 
 .task:hover .resize::after {
   opacity: 0.7;
+}
+
+/* all-day strip with multi-day tasks */
+
+.span-strip {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: inherit;
+  row-gap: 4px;
+  padding: 6px 0 8px;
+  border-top: 1px solid var(--line);
+}
+
+.span-label {
+  grid-column: 1;
+  grid-row: 1;
+  padding: 0 8px 0 0;
+  text-align: right;
+  font-size: 11px;
+  line-height: 1.15;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.span {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0 3px;
+  padding: 0 32px 0 10px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--c) 26%, var(--surface));
+  color: color-mix(in srgb, var(--c) 28%, var(--ink));
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  animation: task-in 0.25s var(--ease) both;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.span:hover,
+.span.dragging {
+  z-index: 2;
+  background: color-mix(in srgb, var(--c) 34%, var(--surface));
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.3);
+}
+
+.span-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.span small {
+  font-weight: 500;
+  opacity: 0.65;
+}
+
+.span .check {
+  top: 4px;
+  right: 12px;
+  width: 15px;
+  height: 15px;
+}
+
+.span .check::before {
+  inset: -4px;
+}
+
+.span.done {
+  background: color-mix(in srgb, var(--c) 9%, var(--surface));
+}
+
+.span.done .span-title {
+  color: var(--muted);
+  text-decoration: line-through 1.5px;
+}
+
+.span.cut-l {
+  margin-left: 0;
+  padding-left: 14px;
+  border-radius: 0 7px 7px 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 7px 50%);
+}
+
+.span.cut-r {
+  margin-right: 0;
+  border-radius: 7px 0 0 7px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 50%, 100% 100%, 0 100%);
+}
+
+.edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.edge.left {
+  left: 0;
+}
+
+.edge.right {
+  right: 0;
+}
+
+.edge::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 3px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--c);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.span:hover .edge::after {
+  opacity: 0.7;
+}
+
+.span-new {
+  min-width: 0;
+  margin: 0 3px;
+  padding: 0 9px;
+  border: 1px dashed rgb(255 255 255 / 0.35);
+  border-radius: 7px;
+  background: rgb(255 255 255 / 0.07);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.span-input {
+  border-style: solid;
+  border-color: var(--ink-2);
+  background: var(--surface-3);
+  outline: none;
+}
+
+.days-count {
+  align-self: end;
+  padding-bottom: 10px;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 /* selection, new block and drop preview */
@@ -884,6 +1046,34 @@ body.dragging * {
   color: var(--danger);
 }
 
+.menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+  background: transparent;
+}
+
+.menu-item small {
+  display: block;
+  margin-top: 1px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.menu-item.divider {
+  position: relative;
+  margin-top: 9px;
+}
+
+.menu-item.divider::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 6px;
+  right: 6px;
+  height: 1px;
+  background: var(--line);
+}
+
 .cat input {
   flex: 1;
   min-width: 0;
@@ -966,7 +1156,7 @@ body.dragging * {
 
 .row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
   gap: 10px;
 }
 

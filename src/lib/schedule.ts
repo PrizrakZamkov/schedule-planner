@@ -26,6 +26,7 @@ export function copyTask(task: Task, slot: Slot | null): Task {
     ...task,
     id: uid(),
     slot,
+    span: slot ? null : task.span,
     repeat: null,
     done: false,
     doneDates: [],
@@ -78,7 +79,7 @@ const byUrgency = (a: Task, b: Task) =>
 // greedy: the most urgent task takes the earliest free window before its deadline
 export function autoPlan(tasks: Task[], days: { date: string; from: number }[], to: number): Task[] {
   let result = tasks
-  const queue = tasks.filter((t) => !t.slot && !t.done).sort(byUrgency)
+  const queue = tasks.filter((t) => !t.slot && !t.span && !t.done).sort(byUrgency)
 
   for (const task of queue) {
     for (const { date, from } of days) {
@@ -162,4 +163,8 @@ export function layoutDay(items: Occurrence[]): Placed[] {
 
 // removes one-off tasks of the given days, repeating series stay
 export const withoutDays = (tasks: Task[], dates: string[]) =>
-  tasks.filter((t) => t.repeat || !t.slot || !dates.includes(t.slot.date))
+  tasks.filter((t) =>
+    t.span
+      ? t.span.from < dates[0] || t.span.to > dates[dates.length - 1]
+      : t.repeat || !t.slot || !dates.includes(t.slot.date),
+  )

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
 import type { Occurrence, PlannerState, Slot, Task } from './types'
-import { isPlannerState, usePlanner } from './store'
+import { usePlanner } from './store'
+import { shiftDate, spanDays } from './lib/spans'
+import { normalizeState } from './lib/migrate'
 import { slotAtPoint, useTaskDrag } from './hooks/useTaskDrag'
 import { applyTemplate, autoPlan, copyTask, createTask, weekToTemplate, withoutDays } from './lib/schedule'
 import { addDays, ceilStep, clamp, DAY_END, DAY_START, fromKey, nowMinutes, PLAN_FROM, PLAN_TO, startOfWeek, toKey, weekKeys } from './lib/time'
@@ -35,7 +37,7 @@ export default function App() {
   }
 
   const move = (task: Task, slot: Slot | null) => dispatch({ type: 'moveTask', id: task.id, slot })
-  const inboxCount = state.tasks.filter((t) => !t.slot && !t.done).length
+  const inboxCount = state.tasks.filter((t) => !t.slot && !t.span && !t.done).length
 
   function copyTo(task: Task, slot: Slot | null) {
     withUndo(slot ? 'Копия добавлена' : 'Копия добавлена в задачи', () =>
@@ -51,6 +53,11 @@ export default function App() {
 
   function duplicate(task: Task) {
     setEditing(null)
+    if (task.span) {
+      const days = spanDays(task.span)
+      const span = { from: shiftDate(task.span.from, days), to: shiftDate(task.span.to, days) }
+      return withUndo('Копия добавлена', () => dispatch({ type: 'saveTask', task: { ...copyTask(task, null), span } }))
+    }
     const slot = task.slot && !task.repeat ? task.slot : null
     const length = slot ? slot.end - slot.start : 0
     copyTo(task, slot && slot.end + length <= DAY_END ? { ...slot, start: slot.end, end: slot.end + length } : null)
@@ -141,13 +148,15 @@ export default function App() {
     e.target.value = ''
     if (!file) return
     try {
-      const data = JSON.parse(await file.text())
-      if (!isPlannerState(data)) throw new Error('wrong format')
+      const data = normalizeState(JSON.parse(await file.text()))
+      if (!data) throw new Error('wrong format')
       withUndo('Данные загружены', () => dispatch({ type: 'replace', state: data }))
     } catch {
       notify('Не удалось прочитать файл')
     }
   }
+
+  const weekHasTasks = withoutDays(state.tasks, dates).length !== state.tasks.length
 
   const ghostColor = state.categories.find((c) => c.id === drag?.task.categoryId)?.color
 
@@ -169,6 +178,9 @@ export default function App() {
           onDelete={deleteTask}
           onNudge={nudge}
           onMenu={openMenu}
+          onSpanCreate={(span, title) => dispatch({ type: 'saveTask', task: createTask({ title, span }) })}
+          onSpanChange={(task, span) => dispatch({ type: 'saveTask', task: { ...task, span } })}
+          onSpanToggle={(task) => dispatch({ type: 'saveTask', task: { ...task, done: !task.done } })}
         />
 
         <aside className="sidebar">
@@ -211,7 +223,7 @@ export default function App() {
             </div>
             <button
               className="btn ghost danger clear-btn"
-              disabled={withoutDays(state.tasks, dates).length === state.tasks.length}
+              disabled={!weekHasTasks}
               onClick={() => withUndo('Неделя очищена', () => dispatch({ type: 'setTasks', tasks: withoutDays(state.tasks, dates) }), 10_000)}
             >
               Очистить неделю

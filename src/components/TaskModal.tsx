@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import type { Category, Priority, Task } from '../types'
 import { cx } from '../lib/cx'
+import { spanDays } from '../lib/spans'
 import { DAY_END, DAY_START, formatTime, parseTime, toKey, WEEKDAYS } from '../lib/time'
 
 interface Props {
@@ -28,8 +29,11 @@ export function TaskModal({ task, isNew, categories, onSave, onDelete, onCopy, o
   const [categoryId, setCategoryId] = useState(task.categoryId)
   const [priority, setPriority] = useState(task.priority)
   const [deadline, setDeadline] = useState(task.deadline ?? '')
-  const [scheduled, setScheduled] = useState(!!task.slot)
+  const [scheduled, setScheduled] = useState(!!task.slot || !!task.span)
   const [date, setDate] = useState(task.slot?.date ?? toKey(new Date()))
+  const [multi, setMulti] = useState(!!task.span)
+  const [from, setFrom] = useState(task.span?.from ?? date)
+  const [to, setTo] = useState(task.span?.to ?? date)
   const [start, setStart] = useState(toInput(task.slot?.start ?? 9 * 60))
   const [end, setEnd] = useState(toInput(task.slot?.end ?? 10 * 60))
   const [duration, setDuration] = useState(task.duration)
@@ -50,13 +54,17 @@ export function TaskModal({ task, isNew, categories, onSave, onDelete, onCopy, o
     if (!title.trim()) return setError('Введите название')
 
     const base = { ...task, title: title.trim(), categoryId, priority, done, deadline: deadline || null }
-    if (!scheduled) return onSave({ ...base, slot: null, repeat: null, duration })
+    if (!scheduled) return onSave({ ...base, slot: null, span: null, repeat: null, duration })
+    if (multi) {
+      if (to < from) return setError('Последний день должен быть не раньше первого')
+      return onSave({ ...base, slot: null, repeat: null, span: { from, to } })
+    }
 
     const slot = { date, start: parseTime(start), end: parseTime(end) || DAY_END }
     if (slot.start < DAY_START) return setError('День в планере начинается в 06:00')
     if (slot.end <= slot.start) return setError('Конец должен быть позже начала')
 
-    onSave({ ...base, slot, repeat: repeat.length ? repeat : null, duration: slot.end - slot.start })
+    onSave({ ...base, slot, span: null, repeat: repeat.length ? repeat : null, duration: slot.end - slot.start })
   }
 
   return (
@@ -103,7 +111,26 @@ export function TaskModal({ task, isNew, categories, onSave, onDelete, onCopy, o
           Поставить в расписание
         </label>
 
-        {scheduled ? (
+        {scheduled && (
+          <label className="switch-row">
+            <input type="checkbox" className="switch" checked={multi} onChange={(e) => setMulti(e.target.checked)} />
+            Несколько дней
+          </label>
+        )}
+
+        {scheduled && multi ? (
+          <div className="row reveal" key="span">
+            <div className="field">
+              <label htmlFor="from">С</label>
+              <input id="from" className="input" type="date" value={from} required onChange={(e) => setFrom(e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="to">По</label>
+              <input id="to" className="input" type="date" value={to} required onChange={(e) => setTo(e.target.value)} />
+            </div>
+            <span className="days-count">{to >= from ? `${spanDays({ from, to })} дн.` : ''}</span>
+          </div>
+        ) : scheduled ? (
           <div className="reveal" key="slot">
             <div className="row">
               <div className="field">
